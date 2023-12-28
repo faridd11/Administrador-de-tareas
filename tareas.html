@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Farid Flores</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f7f7f7;
+            color: #333;
+            margin: 20px;
+        }
+
+        h1 {
+            text-align: center;
+            color: #3498bd;
+        }
+        .add-task-container {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        label {
+            font-weight: bold;
+            margin-right: 10px;
+        }
+         
+        input[type = "text"] {
+          padding: 8px;
+          margin-right: 10px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          box-sizing: border-box;
+        }
+
+        button{
+            padding: 8px 15px;
+            background-color: #3498bd;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover{
+            background-color: #2880b9;
+        }
+
+        ul{
+            list-style-type: none;
+            padding: 0;
+        }
+        #taskList {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .task {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+        .mini-task-list{
+            list-style-type: none;
+            padding: 0;
+        }
+        .mini.task {
+            display: flex;
+            align-items: center;
+            margin-top: 5px;
+        }
+
+        .mini-task input[type="checkbox"] {
+            margin-right: 10px;
+        }
+    
+        .mini-task-option {
+            display: flex;
+            align-items: center;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin: 10px 0;
+            background-color: #ecf0f1;
+            border-radius: 4px;
+        }
+
+        .mini-task-option input[type="checkbox"] {
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gestor de Tareas</h1>
+    <div>
+        <label for="taskDetails">Detalles de la Tarea:</label>
+        <input type="text" id="taskDetails" placeholder="Ingrese los detalles">
+        <ul id="miniTaskOptions"></ul>
+        <button onclick="addTask()">Agregar Tarea</button> 
+        <button onclick="Mostrar()">Mostrar/Ocultar tareas</button>
+    </div>
+    <ul id="taskList"></ul>
+
+    <script>
+    function Mostrar() {
+        const taskList = document.getElementById('taskList');
+        const currentDisplayStyle = taskList.style.display || getComputedStyle(taskList).display;
+
+        if (currentDisplayStyle === 'none') {
+            taskList.style.display = 'block';
+        } else {
+            taskList.style.display = 'none';
+        }
+        renderMiniTaskOptions();
+    }
+
+    function getTasks() {
+            return JSON.parse(localStorage.getItem('tasks')) || [];
+        }
+
+        function saveTasks(tasks) {
+            localStorage.setItem('tasks', JSON.stringify(tasks));
+            if(typeof renderTasks === 'function'){ 
+             renderTasks();
+            }
+           
+        }
+        function deleteTask(taskId) {
+            let tasks = getTasks();
+            const updatedTasks = tasks.filter(task => task.id !== taskId);
+            saveTasks(updatedTasks);
+        } 
+
+        function deleteMiniTask(taskId, miniTaskId) {
+            const tasks = getTasks();
+            const taskIndex = tasks.findIndex(task => task.id === taskId);
+
+            if (taskIndex !== -1) {
+                tasks[taskIndex].miniTasks = tasks[taskIndex].miniTasks.filter(miniTask => miniTask.id !== miniTaskId);
+                saveTasks(tasks);
+            }
+        }
+
+        function renderTasks() {
+            const taskList = document.getElementById('taskList');
+    taskList.innerHTML = '';
+
+    const tasks = getTasks();
+    tasks.forEach(task => {
+        const taskItem = document.createElement('li');
+        taskItem.className = 'task';
+
+        const taskHeader = document.createElement('div');
+        taskHeader.textContent = task.details;
+
+        const miniTaskList = document.createElement('ul');
+        miniTaskList.className = 'mini-task-list';
+
+        // Verificar si 'miniTasks' está definido y es un array
+        if (task.miniTasks && Array.isArray(task.miniTasks)) {
+            task.miniTasks.forEach(miniTask => {
+                const miniTaskItem = document.createElement('li');
+                miniTaskItem.className = 'mini-task';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = miniTask.completed;
+                checkbox.onchange = function () {
+                    updateMiniTaskStatus(task.id, miniTask.id, checkbox.checked);
+                };
+
+                const miniTaskDetails = document.createElement('div');
+                miniTaskDetails.textContent = miniTask.details;
+
+                miniTaskItem.appendChild(checkbox);
+                miniTaskItem.appendChild(miniTaskDetails);
+
+                const deleteMiniTaskButton = document.createElement('button');
+                deleteMiniTaskButton.textContent = 'Eliminar Subtarea';
+                deleteMiniTaskButton.onclick = function () {
+                    deleteMiniTask(task.id, miniTask.id);
+                };
+
+                miniTaskItem.appendChild(deleteMiniTaskButton);
+
+                miniTaskList.appendChild(miniTaskItem);
+            });
+        }
+
+        const deleteTaskButton = document.createElement('button');
+        deleteTaskButton.textContent = 'Eliminar Tarea';
+        deleteTaskButton.onclick = function () {
+            deleteTask(task.id);
+        };
+
+        taskItem.appendChild(deleteTaskButton);
+
+        const miniTaskInput = document.createElement('input');
+        miniTaskInput.type = 'text';
+        miniTaskInput.placeholder = 'Añadir mini tarea';
+        miniTaskInput.onkeyup = function (event) {
+            if (event.key === 'Enter') {
+                addMiniTask(task.id, miniTaskInput.value);
+                miniTaskInput.value = '';
+            }
+        };
+
+        taskItem.appendChild(taskHeader);
+        taskItem.appendChild(miniTaskList);
+        taskItem.appendChild(miniTaskInput);
+
+        taskList.appendChild(taskItem);
+    });
+}
+
+
+        function addTask() {
+            const taskDetailsInput = document.getElementById('taskDetails');
+            const taskDetails = taskDetailsInput.value;
+
+            if (taskDetails.trim() === '') {
+                alert('Por favor, ingrese los detalles de la tarea.');
+                return;
+            }
+
+            const tasks = getTasks();
+            const newTask = {
+                id: Date.now(),
+                details: taskDetails,
+                miniTasks: [],
+            };
+
+            tasks.push(newTask);
+            saveTasks(tasks);
+
+            // Limpiar el campo de entrada después de agregar una tarea
+            taskDetailsInput.value = '';
+        }
+
+        function addMiniTask(taskId, miniTaskDetails) {
+            const tasks = getTasks();
+            const taskIndex = tasks.findIndex(task => task.id === taskId);
+
+            if (taskIndex !== -1 && tasks[taskIndex].miniTasks) {
+                const newMiniTask = {
+                    id: Date.now(),
+                    details: miniTaskDetails,
+                    completed: false,
+                };
+
+                tasks[taskIndex].miniTasks.push(newMiniTask);
+                saveTasks(tasks);
+            }
+            renderMiniTaskOptions();
+        }
+
+        function updateMiniTaskStatus(taskId, miniTaskId, completed) {
+            const tasks = getTasks();
+            const taskIndex = tasks.findIndex(task => task.id === taskId);
+
+            if (taskIndex !== -1) {
+                const miniTaskIndex = tasks[taskIndex].miniTasks.findIndex(miniTask => miniTask.id === miniTaskId);
+
+                if (miniTaskIndex !== -1) {
+                    tasks[taskIndex].miniTasks[miniTaskIndex].completed = completed;
+                    saveTasks(tasks);
+                }
+            }
+            renderMiniTaskOptions();
+        }
+        renderMiniTaskOptions();
+        
+// Nueva sección para mostrar las subtareas como opciones
+const miniTaskOptions = document.getElementById('miniTaskOptions');
+    miniTaskOptions.innerHTML = '';
+
+    tasks.forEach(task => {
+        if (task.miniTasks && Array.isArray(task.miniTasks)) {
+            task.miniTasks.forEach(miniTask => {
+                const miniTaskOption = document.createElement('li');
+                miniTaskOption.className = 'mini-task-option';
+
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.checked = miniTask.completed;
+                checkbox.onchange = function () {
+                    // Aquí puedes agregar una función para manejar el cambio de estado de la subtarea
+                    console.log('Estado de la subtarea cambiado:', miniTask.details, checkbox.checked);
+                };
+
+                const miniTaskDetails = document.createElement('div');
+                miniTaskDetails.textContent = miniTask.details;
+
+                miniTaskOption.appendChild(checkbox);
+                miniTaskOption.appendChild(miniTaskDetails);
+
+                miniTaskOptions.appendChild(miniTaskOption);
+            });
+        }
+    });
+
+
+
+        
+
+    </script>
+
+ 
+
+
+</body>
+</html>
